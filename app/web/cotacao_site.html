@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cotação de Moedas e Criptomoedas</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💱</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#eef1ec; --card:#fff; --ink:#17231d; --muted:#5d6b63; --line:#d5dcd3;
+    --accent:#1f5c46; --up:#17803d; --down:#b3261e;
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#101713; --card:#17211b; --ink:#e7efe9; --muted:#98a89e;
+      --line:#2a372f; --accent:#6fcf9f; --up:#5fd08a; --down:#ff8a80;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+    font-family:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    font-variant-numeric:tabular-nums; line-height:1.5; padding:28px 16px;
+  }
+  main { max-width:940px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin:0 0 4px; font-weight:600; }
+  .sub { margin:0 0 20px; color:var(--muted); }
+  .layout { display:grid; gap:16px; grid-template-columns:1fr; align-items:start; }
+  @media (min-width:820px) { .layout { grid-template-columns:300px 1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; }
+  .stack > * + * { margin-top:16px; }
+  label { display:block; font-size:.875rem; color:var(--muted); margin-bottom:6px; }
+  input[type=search], input[type=number] {
+    width:100%; padding:10px 12px; font:inherit; color:var(--ink);
+    background:var(--bg); border:1px solid var(--line); border-radius:6px;
+  }
+  button { font:inherit; color:var(--ink); }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .seg { display:flex; gap:6px; margin:10px 0; }
+  .seg button {
+    flex:1; padding:6px 8px; cursor:pointer; background:transparent;
+    border:1px solid var(--line); border-radius:6px; font-size:.875rem;
+  }
+  .seg button[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--card); }
+  .count { font-size:.8125rem; color:var(--muted); margin:0 0 6px; }
+  .lista { max-height:380px; overflow-y:auto; border:1px solid var(--line); border-radius:6px; }
+  .item {
+    display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:8px 10px;
+    background:transparent; border:0; border-bottom:1px solid var(--line); cursor:pointer;
+  }
+  .item:last-child { border-bottom:0; }
+  .item:hover { background:var(--bg); }
+  .item[aria-current="true"] { background:var(--bg); box-shadow:inset 3px 0 0 var(--accent); }
+  .item b { font-weight:600; min-width:74px; }
+  .item span { flex:1; font-size:.875rem; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item i { font-style:normal; color:var(--accent); }
+  .vazio { padding:14px; color:var(--muted); font-size:.875rem; margin:0; }
+  .head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .head h2 { margin:0; font-size:1.125rem; font-weight:600; }
+  .head p { margin:0; color:var(--muted); font-size:.875rem; }
+  .star { background:none; border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; }
+  .price { margin-top:14px; font-size:2.5rem; font-weight:600; letter-spacing:-.02em; line-height:1.1; }
+  .var { font-size:1rem; font-weight:500; margin-left:8px; }
+  .up { color:var(--up); } .down { color:var(--down); }
+  .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px 20px; margin:18px 0 0; padding-top:16px; border-top:1px solid var(--line); }
+  @media (min-width:560px) { .grid { grid-template-columns:repeat(4,1fr); } }
+  .grid dt { font-size:.8125rem; color:var(--muted); }
+  .grid dd { margin:0; font-size:1rem; font-weight:500; }
+  .meta { margin-top:14px; font-size:.8125rem; color:var(--muted); display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .link { background:none; border:0; padding:0; color:var(--accent); cursor:pointer; text-decoration:underline; }
+  .error { color:var(--down); margin:0; }
+  .loading .price { opacity:.4; }
+  .grafico svg { width:100%; height:auto; display:block; touch-action:pan-y; cursor:crosshair; }
+  .ln { fill:none; stroke:var(--accent); stroke-width:2; vector-effect:non-scaling-stroke; }
+  .ar { fill:var(--accent); opacity:.12; }
+  .hl { stroke:var(--muted); stroke-width:1; vector-effect:non-scaling-stroke; }
+  .hc { fill:var(--accent); }
+  .leitura { font-size:.875rem; color:var(--muted); min-height:1.5em; margin:8px 0 0; }
+  .res { margin:14px 0 0; font-size:1.25rem; font-weight:600; overflow-wrap:anywhere; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Cotação de moedas e criptomoedas</h1>
+  <p class="sub">Busque entre as moedas e criptomoedas disponíveis e veja o valor atual, o histórico e o conversor.</p>
+
+  <div class="layout">
+    <section class="card" aria-label="Escolher moeda">
+      <label for="busca">Buscar moeda</label>
+      <input id="busca" type="search" placeholder="Ex.: dólar, euro, BTC, ethereum" autocomplete="off">
+      <div class="seg" role="group" aria-label="Tipo">
+        <button type="button" data-f="todas" aria-pressed="true">Todas</button>
+        <button type="button" data-f="moeda" aria-pressed="false">Moedas</button>
+        <button type="button" data-f="cripto" aria-pressed="false">Criptos</button>
+      </div>
+      <p class="count" id="contagem" aria-live="polite"></p>
+      <div class="lista" id="lista"></div>
+    </section>
+
+    <div class="stack">
+      <section class="card" id="painel" aria-live="polite">
+        <div id="erro" class="error" role="alert" hidden></div>
+        <div id="dados" hidden>
+          <div class="head">
+            <div><h2 id="titulo"></h2><p id="subtitulo"></p></div>
+            <button class="star" id="fav" type="button"></button>
+          </div>
+          <div class="price"><span id="bid"></span><span id="pct" class="var"></span></div>
+          <dl class="grid">
+            <div><dt>Venda (ask)</dt><dd id="ask"></dd></div>
+            <div><dt>Diferença compra/venda</dt><dd id="spread"></dd></div>
+            <div><dt>Máxima do dia</dt><dd id="high"></dd></div>
+            <div><dt>Mínima do dia</dt><dd id="low"></dd></div>
+            <div><dt>Amplitude do dia</dt><dd id="amp"></dd></div>
+            <div><dt>Variação em valor</dt><dd id="varbid"></dd></div>
+            <div><dt>Variação em %</dt><dd id="pct2"></dd></div>
+            <div><dt>Par consultado</dt><dd id="par"></dd></div>
+          </dl>
+          <div class="meta">
+            <span>Atualizado em <span id="data"></span></span>
+            <button class="link" id="atualizar" type="button">Atualizar agora</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="hist" hidden>
+        <div class="head">
+          <div><h2>Histórico</h2><p id="hist-sub">Cotação de compra por dia</p></div>
+          <div class="seg" role="group" aria-label="Período" style="margin:0">
+            <button type="button" data-d="7" aria-pressed="false">7 dias</button>
+            <button type="button" data-d="30" aria-pressed="true">30 dias</button>
+            <button type="button" data-d="90" aria-pressed="false">90 dias</button>
+          </div>
+        </div>
+        <div class="grafico" id="grafico"></div>
+        <p class="leitura" id="leitura"></p>
+        <dl class="grid" id="resumo" hidden>
+          <div><dt>Mínimo do período</dt><dd id="r-min"></dd></div>
+          <div><dt>Máximo do período</dt><dd id="r-max"></dd></div>
+          <div><dt>Média do período</dt><dd id="r-med"></dd></div>
+          <div><dt>Variação no período</dt><dd id="r-var"></dd></div>
+        </dl>
+      </section>
+
+      <section class="card" id="conversor" hidden>
+        <div class="seg" role="group" aria-label="Sentido da conversão">
+          <button type="button" id="sent-a" aria-pressed="true"></button>
+          <button type="button" id="sent-b" aria-pressed="false"></button>
+        </div>
+        <label for="valor">Valor</label>
+        <input id="valor" type="number" min="0" step="any" value="1">
+        <p class="res" id="resultado"></p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+  const B = "https://economia.awesomeapi.com.br/json/";
+  const CRIPTOS = new Set(["BTC","ETH","LTC","XRP","DOGE","BNB","SOL","ADA","DOT","AVAX","MATIC","LINK","UNI","SHIB","TRX","XLM","USDT","USDC","DAI","BCH","ETC","XMR","DASH","ZEC","EOS","IOTA","NEO","OMG","BAT","ZRX","MKR","COMP","AAVE","ATOM","ALGO","FIL","NEAR","APT","ARB","OP","PEPE","TON","SUI"]);
+  const FALLBACK = {
+    "USD-BRL":"Dólar Americano/Real Brasileiro", "EUR-BRL":"Euro/Real Brasileiro",
+    "GBP-BRL":"Libra Esterlina/Real Brasileiro", "ARS-BRL":"Peso Argentino/Real Brasileiro",
+    "JPY-BRL":"Iene Japonês/Real Brasileiro", "CAD-BRL":"Dólar Canadense/Real Brasileiro",
+    "BTC-BRL":"Bitcoin/Real Brasileiro", "ETH-BRL":"Ethereum/Real Brasileiro",
+    "LTC-BRL":"Litecoin/Real Brasileiro", "XRP-BRL":"Ripple/Real Brasileiro", "DOGE-BRL":"Dogecoin/Real Brasileiro"
+  };
+
+  const $ = id => document.getElementById(id);
+  const norm = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const num = (n, d = 2) => Number(n).toLocaleString("pt-BR", { maximumFractionDigits: d });
+  const pctTxt = n => (n > 0 ? "+" : "") + Number(n).toFixed(2).replace(".", ",") + "%";
+
+  function fmt(n, quote) {
+    n = Number(n);
+    const max = Math.abs(n) < 1 ? 6 : 2;
+    try {
+      return new Intl.NumberFormat("pt-BR", { style: "currency", currency: quote, minimumFractionDigits: 2, maximumFractionDigits: max }).format(n);
+    } catch (e) {
+      return num(n, max + 2) + " " + quote;
+    }
+  }
+
+  let pares = [], sel = null, dados = null, filtro = "todas", dias = 30, serie = [], paraQuote = true;
+  let tokC = 0, tokH = 0;
+  let fav = new Set();
+  try { fav = new Set(JSON.parse(localStorage.getItem("cotacao:fav") || "[]")); } catch (e) {}
+  const salvarFav = () => { try { localStorage.setItem("cotacao:fav", JSON.stringify([...fav])); } catch (e) {} };
+
+  function montarPares(obj) {
+    return Object.entries(obj).map(([par, desc]) => {
+      const [base, quote] = par.split("-"), [nome, nomeQ = quote] = String(desc).split("/");
+      return { par, base, quote, nome, nomeQ, tipo: CRIPTOS.has(base) ? "cripto" : "moeda" };
+    });
+  }
+
+  async function iniciar() {
+    let obj;
+    try {
+      const r = await fetch(B + "available");
+      obj = await r.json();
+      if (!r.ok || !Object.keys(obj).length) throw new Error();
+    } catch (e) {
+      obj = FALLBACK;
+    }
+    pares = montarPares(obj);
+    sel = pares.find(p => p.par === "USD-BRL") || pares[0];
+    renderLista();
+    consultar();
+    historico();
+  }
+
+  function renderLista() {
+    const q = norm($("busca").value.trim());
+    const itens = pares.filter(p =>
+      (filtro === "todas" || p.tipo === filtro) &&
+      (!q || norm(p.par + " " + p.nome + " " + p.nomeQ).includes(q))
+    ).sort((a, b) =>
+      (fav.has(b.par) - fav.has(a.par)) ||
+      ((b.quote === "BRL") - (a.quote === "BRL")) ||
+      a.base.localeCompare(b.base)
+    );
+    const box = $("lista");
+    box.replaceChildren();
+    $("contagem").textContent = itens.length + (itens.length === 1 ? " resultado" : " resultados");
+    if (!itens.length) {
+      const p = document.createElement("p");
+      p.className = "vazio";
+      p.textContent = "Nenhuma moeda encontrada. Tente o código (ex.: BTC) ou parte do nome.";
+      box.append(p);
+      return;
+    }
+    for (const it of itens.slice(0, 200)) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "item";
+      if (sel && it.par === sel.par) b.setAttribute("aria-current", "true");
+      const code = document.createElement("b"); code.textContent = it.par;
+      const nm = document.createElement("span"); nm.textContent = it.nome;
+      b.append(code, nm);
+      if (fav.has(it.par)) { const s = document.createElement("i"); s.textContent = "★"; b.append(s); }
+      b.addEventListener("click", () => selecionar(it));
+      box.append(b);
+    }
+  }
+
+  function selecionar(p) {
+    sel = p;
+    renderLista();
+    consultar();
+    historico();
+  }
+
+  async function consultar(silencioso) {
+    const id = ++tokC, par = sel.par;
+    if (!silencioso) $("painel").classList.add("loading");
+    $("erro").hidden = true;
+    try {
+      const r = await fetch(B + "last/" + par);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message || "Erro ao consultar a API (status " + r.status + ").");
+      const d = j[par.replace("-", "")];
+      if (!d) throw new Error("Cotação indisponível para " + par + ".");
+      if (id !== tokC) return;
+      dados = d;
+      mostrar();
+    } catch (e) {
+      if (id !== tokC) return;
+      if (silencioso && dados) return;
+      dados = null;
+      $("dados").hidden = true; $("conversor").hidden = true;
+      $("erro").textContent = "Não foi possível consultar a cotação: " +
+        (e instanceof TypeError ? "verifique sua conexão com a internet." : e.message);
+      $("erro").hidden = false;
+    } finally {
+      if (id === tokC) $("painel").classList.remove("loading");
+    }
+  }
+
+  function mostrar() {
+    const d = dados, q = sel.quote, pct = Number(d.pctChange);
+    $("titulo").textContent = sel.nome;
+    $("subtitulo").textContent = "em " + sel.nomeQ;
+    $("fav").textContent = fav.has(sel.par) ? "★ Favorita" : "☆ Favoritar";
+    $("fav").setAttribute("aria-pressed", fav.has(sel.par));
+    $("bid").textContent = fmt(d.bid, q);
+    const p = $("pct");
+    p.textContent = pctTxt(pct);
+    p.className = "var " + (pct >= 0 ? "up" : "down");
+    $("ask").textContent = fmt(d.ask, q);
+    $("spread").textContent = fmt(Number(d.ask) - Number(d.bid), q);
+    $("high").textContent = fmt(d.high, q);
+    $("low").textContent = fmt(d.low, q);
+    $("amp").textContent = fmt(Number(d.high) - Number(d.low), q);
+    $("varbid").textContent = fmt(d.varBid, q);
+    $("pct2").textContent = pctTxt(pct);
+    $("pct2").className = pct >= 0 ? "up" : "down";
+    $("par").textContent = sel.par;
+    $("data").textContent = new Date(d.create_date.replace(" ", "T")).toLocaleString("pt-BR");
+    $("dados").hidden = false;
+    $("conversor").hidden = false;
+    $("sent-a").textContent = sel.base + " para " + q;
+    $("sent-b").textContent = q + " para " + sel.base;
+    converter();
+  }
+
+  function converter() {
+    if (!dados) return;
+    const v = parseFloat($("valor").value) || 0, bid = Number(dados.bid), b = sel.base, q = sel.quote;
+    $("resultado").textContent = paraQuote
+      ? num(v, 8) + " " + b + " = " + fmt(v * bid, q)
+      : fmt(v, q) + " = " + num(v / bid, 8) + " " + b;
+  }
+
+  async function historico() {
+    const id = ++tokH, par = sel.par;
+    $("hist").hidden = false;
+    $("resumo").hidden = true;
+    $("leitura").textContent = "";
+    $("grafico").textContent = "Carregando histórico…";
+    try {
+      const r = await fetch(B + "daily/" + par + "/" + dias);
+      const j = await r.json();
+      if (!r.ok || !Array.isArray(j) || j.length < 2) throw new Error("Sem histórico suficiente para este par.");
+      if (id !== tokH) return;
+      serie = j.map(x => ({ t: Number(x.timestamp) * 1000, v: Number(x.bid) })).reverse();
+      desenhar();
+    } catch (e) {
+      if (id !== tokH) return;
+      serie = [];
+      $("grafico").textContent = e instanceof TypeError ? "Não foi possível carregar o histórico: verifique sua conexão." : e.message;
+    }
+  }
+
+  function desenhar() {
+    const W = 600, H = 200, P = 10, n = serie.length, q = sel.quote;
+    const vs = serie.map(s => s.v), min = Math.min(...vs), max = Math.max(...vs), med = vs.reduce((a, b) => a + b, 0) / n;
+    const X = i => (i / (n - 1)) * W;
+    const Y = v => H - P - ((v - min) / ((max - min) || 1)) * (H - 2 * P);
+    const pts = serie.map((s, i) => X(i).toFixed(1) + "," + Y(s.v).toFixed(1)).join(" ");
+    $("grafico").innerHTML =
+      '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Gráfico do histórico de ' + n + ' dias">' +
+      '<polygon class="ar" points="0,' + H + " " + pts + " " + W + "," + H + '"/>' +
+      '<polyline class="ln" points="' + pts + '"/>' +
+      '<line class="hl" id="hl" x1="0" x2="0" y1="0" y2="' + H + '" hidden/>' +
+      '<circle class="hc" id="hc" r="4" hidden/></svg>';
+    const svg = $("grafico").firstChild;
+    const ver = i => {
+      const s = serie[i];
+      $("hl").setAttribute("x1", X(i)); $("hl").setAttribute("x2", X(i));
+      $("hc").setAttribute("cx", X(i)); $("hc").setAttribute("cy", Y(s.v));
+      $("hl").removeAttribute("hidden"); $("hc").removeAttribute("hidden");
+      $("leitura").textContent = new Date(s.t).toLocaleDateString("pt-BR") + " — " + fmt(s.v, q);
+    };
+    svg.addEventListener("pointermove", e => {
+      const r = svg.getBoundingClientRect();
+      ver(Math.min(n - 1, Math.max(0, Math.round(((e.clientX - r.left) / r.width) * (n - 1)))));
+    });
+    svg.addEventListener("pointerleave", () => {
+      $("hl").setAttribute("hidden", ""); $("hc").setAttribute("hidden", "");
+      $("leitura").textContent = "Passe o mouse (ou o dedo) sobre o gráfico para ver cada dia.";
+    });
+    $("leitura").textContent = "Passe o mouse (ou o dedo) sobre o gráfico para ver cada dia.";
+    $("hist-sub").textContent = "Cotação de compra por dia, de " + new Date(serie[0].t).toLocaleDateString("pt-BR") +
+      " a " + new Date(serie[n - 1].t).toLocaleDateString("pt-BR");
+    const v = ((vs[n - 1] - vs[0]) / vs[0]) * 100;
+    $("r-min").textContent = fmt(min, q);
+    $("r-max").textContent = fmt(max, q);
+    $("r-med").textContent = fmt(med, q);
+    $("r-var").textContent = pctTxt(v);
+    $("r-var").className = v >= 0 ? "up" : "down";
+    $("resumo").hidden = false;
+  }
+
+  // eventos
+  $("busca").addEventListener("input", renderLista);
+  document.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => {
+    filtro = b.dataset.f;
+    document.querySelectorAll("[data-f]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    renderLista();
+  }));
+  document.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", () => {
+    dias = Number(b.dataset.d);
+    document.querySelectorAll("[data-d]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    historico();
+  }));
+  $("fav").addEventListener("click", () => {
+    fav.has(sel.par) ? fav.delete(sel.par) : fav.add(sel.par);
+    salvarFav(); mostrar(); renderLista();
+  });
+  $("atualizar").addEventListener("click", () => consultar());
+  $("valor").addEventListener("input", converter);
+  $("sent-a").addEventListener("click", () => setSentido(true));
+  $("sent-b").addEventListener("click", () => setSentido(false));
+  function setSentido(b) {
+    paraQuote = b;
+    $("sent-a").setAttribute("aria-pressed", b);
+    $("sent-b").setAttribute("aria-pressed", !b);
+    converter();
+  }
+
+  iniciar();
+  setInterval(() => sel && consultar(true), 30000); // atualiza o valor sozinho a cada 30 s
+</script>
+</body>
+</html>
